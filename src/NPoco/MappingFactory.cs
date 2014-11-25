@@ -353,6 +353,14 @@ namespace NPoco
             }
         }
 
+        /// <summary>
+        /// Return a lambda to convert SQL Types to CLR types correctly.
+        /// </summary>
+        /// <param name="mapper"></param>
+        /// <param name="pc"></param>
+        /// <param name="srcType"></param>
+        /// <param name="dstType"></param>
+        /// <returns></returns>
         public static Func<object, object> GetConverter(IMapper mapper, PocoColumn pc, Type srcType, Type dstType)
         {
             Func<object, object> converter = null;
@@ -369,6 +377,41 @@ namespace NPoco
             if (pc != null && pc.ForceToUtc && srcType == typeof(DateTime) && (dstType == typeof(DateTime) || dstType == typeof(DateTime?)))
             {
                 converter = delegate(object src) { return new DateTime(((DateTime)src).Ticks, DateTimeKind.Utc); };
+                return converter;
+            }
+
+            // RideShark - VarChar(5) to Boolean? Mapper
+            if (srcType == typeof(string) && dstType == typeof(Boolean?))
+            {
+                converter = delegate (object src) {
+                    if (src == null){
+                        return null;
+                    }
+                    else 
+                    {
+                        var lowerString = src.ToString().ToLower();
+                        if (lowerString == "true")
+                        {
+                            return true;
+                        }else if(lowerString == "false")
+                        {
+                            return false;
+                        }else{
+                            return null;
+                        }
+                    }
+                };
+                return converter;
+            }
+
+            // RideShark - Null string to blank string
+            if (srcType == typeof (string ) && dstType == typeof (string)){
+                converter = delegate(object src) {
+                    if (src == null){
+                        return "";
+                    }
+                    return src;
+                };
                 return converter;
             }
 

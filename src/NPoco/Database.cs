@@ -1033,7 +1033,7 @@ namespace NPoco
         public class DontMap { }
 
         // Actual implementation of the multi query
-        private TRet FetchMultiple<T1, T2, T3, T4, TRet>(Type[] types, object cb, Sql Sql)
+        public TRet FetchMultiple<T1, T2, T3, T4, TRet>(Type[] types, object cb, Sql Sql)
         {
             var sql = Sql.SQL;
             var args = Sql.Arguments;
