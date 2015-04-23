@@ -380,24 +380,25 @@ namespace NPoco
                 return converter;
             }
 
-            // RideShark - VarChar(5) to Boolean? Mapper
-            if (srcType == typeof(string) && dstType == typeof(Boolean?))
+            // RideShark - VarChar(5) to Boolean Mapper
+            if (srcType == typeof(string) && dstType == typeof(Boolean))
             {
-                converter = delegate (object src) {
-                    if (src == null){
-                        return null;
-                    }
-                    else 
+                converter = delegate(object src)
+                {
+                    if (src == null)
                     {
-                        var lowerString = src.ToString().ToLower();
-                        if (lowerString == "true")
+                        return false;
+                    }
+                    else
+                    {
+                        var srcToString = src.ToString();
+                        if (srcToString == "True" || srcToString == "true" || srcToString.ToLower() == "true")
                         {
                             return true;
-                        }else if(lowerString == "false")
+                        }
+                        else 
                         {
                             return false;
-                        }else{
-                            return null;
                         }
                     }
                 };
