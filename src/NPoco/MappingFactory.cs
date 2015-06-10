@@ -192,11 +192,13 @@ namespace NPoco
                             il.Emit(OpCodes.Newobj, constructorInfo);
                         }
 
+                        // Declare a local variable ('a')
                         LocalBuilder a = il.DeclareLocal(typeof(Int32));
                         if (_pocoData.EmptyNestedObjectNull)
                         {
-                            il.Emit(OpCodes.Ldc_I4, 0);
-                            il.Emit(OpCodes.Stloc, a);
+
+                            il.Emit(OpCodes.Ldc_I4, 0);     
+                            il.Emit(OpCodes.Stloc, a);      // store poco in 'a' if EmptyNestedObjectNull.
                         }
 
                         // Enumerate all fields generating a set assignment for the column
@@ -229,6 +231,7 @@ namespace NPoco
                             il.Emit(OpCodes.Ldc_I4, i);										// poco,rdr,i
                             il.Emit(OpCodes.Callvirt, fnIsDBNull);							// poco,bool
                             var lblNext = il.DefineLabel();
+                            // If the value on the stack is 'true', branch to the 'lblNext' label.
                             il.Emit(OpCodes.Brtrue_S, lblNext);								// poco
 
                             il.Emit(OpCodes.Dup);											// poco,poco
