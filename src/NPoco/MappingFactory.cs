@@ -30,7 +30,7 @@ namespace NPoco
         {
             // Check cache
             var key = string.Format("{0}:{1}:{2}:{3}:{4}:{5}", sql, connString, firstColumn, countColumns, instance != GetDefault(_pocoData.type), _pocoData.EmptyNestedObjectNull);
- 
+
             Func<Delegate> createFactory = () =>
             {
                 // Create the method
@@ -171,7 +171,7 @@ namespace NPoco
                             il.Emit(OpCodes.Ldc_I4, i - firstColumn);                       // arr,arr,value,i
                             il.Emit(OpCodes.Callvirt, valueset);                            // arr
 
-                            il.MarkLabel(lblNext);                  
+                            il.MarkLabel(lblNext);
                         }
 
                         il.Emit(OpCodes.Castclass, _pocoData.type);
@@ -209,7 +209,7 @@ namespace NPoco
                             {
                                 var pcAlias = _pocoData.Columns.Values.SingleOrDefault(x => x.AutoAlias == r.GetName(i))
                                     ?? _pocoData.Columns.Values.SingleOrDefault(x => string.Equals(x.ColumnAlias, r.GetName(i), StringComparison.OrdinalIgnoreCase));
-                                
+
                                 if (pcAlias != null)
                                 {
                                     pc = pcAlias;
@@ -295,7 +295,7 @@ namespace NPoco
                         if (fnOnLoaded != null)
                         {
                             il.Emit(OpCodes.Dup);
-                            il.Emit(OpCodes.Callvirt, (MethodInfo) fnOnLoaded);
+                            il.Emit(OpCodes.Callvirt, (MethodInfo)fnOnLoaded);
                         }
 
                         if (_pocoData.EmptyNestedObjectNull)
@@ -396,7 +396,7 @@ namespace NPoco
                         {
                             return true;
                         }
-                        else 
+                        else
                         {
                             return false;
                         }
@@ -406,10 +406,17 @@ namespace NPoco
             }
 
             // RideShark - Null string to blank string
-            if (srcType == typeof (string ) && dstType == typeof (string)){
-                converter = delegate(object src) {
-                    if (src == null){
-                        return "";
+            if (srcType == typeof(string) && dstType == typeof(string))
+            {
+                converter = delegate(object src)
+                {
+                    if (src == null)
+                    {
+                        return string.Empty;
+                    }
+                    else if (DBNull.Value.Equals(src))
+                    {
+                        return string.Empty;
                     }
                     return src;
                 };
