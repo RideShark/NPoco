@@ -37,6 +37,14 @@ namespace NPoco
                 var m = new DynamicMethod("poco_factory_" + _pocoFactories.Count, _pocoData.type, new Type[] { typeof(IDataReader), _pocoData.type }, true);
                 var il = m.GetILGenerator();
 
+                // RideShark:
+                //
+                // Comments added for those not familiar with MSIL:
+                // 
+                // OpCodes.Ldarg_0 - Pushes argument 0 (the passed in IDataReader object) to the evaluation stack.
+                // OpCodes.Ldarg_1 - Pushes argument 1 (the Type of the POCO) to the evaluation stack.
+
+
 #if !POCO_NO_DYNAMIC
                 if (_pocoData.type == typeof(object))
                 {
@@ -178,6 +186,8 @@ namespace NPoco
                     }
                     else
                     {
+
+                        // Push either the passed in POCO, or a new POCO of the same type, onto the evaluation stack.
                         if (instance != null)
                         {
                             il.Emit(OpCodes.Ldarg_1);
@@ -221,18 +231,36 @@ namespace NPoco
                                     continue;
                                 }
                             }
+                            // Modified for RideShark
+
+
+                            // Create a label which can be used to go to the next field. 
+                            // (lblNext is inserted into the MSIL stream at the end of the for loop)
+                            var lblNext = il.DefineLabel();
 
                             // Get the source type for this column
                             var srcType = r.GetFieldType(i);
                             var dstType = pc.MemberInfo.GetMemberInfoType();
 
-                            // "if (!rdr.IsDBNull(i))"
-                            il.Emit(OpCodes.Ldarg_0);										// poco,rdr
-                            il.Emit(OpCodes.Ldc_I4, i);										// poco,rdr,i
-                            il.Emit(OpCodes.Callvirt, fnIsDBNull);							// poco,bool
-                            var lblNext = il.DefineLabel();
-                            // If the value on the stack is 'true', branch to the 'lblNext' label.
-                            il.Emit(OpCodes.Brtrue_S, lblNext);								// poco
+
+                            // Original NPoco functionality checks if something is DBNull for every field, 
+                            // then continues the loop if it is.
+                            // 
+                            // We want to disable this jumping if the source and destination types are both strings
+                            if (srcType != typeof(string) && dstType != typeof (string))
+                            {
+                                // "if (!rdr.IsDBNull(i))"
+                                il.Emit(OpCodes.Ldarg_0); // poco,rdr
+                                
+                                // IDataReader.IsDBNull takes an index of the field to check the DB Null value on.
+                                il.Emit(OpCodes.Ldc_I4, i); // poco,rdr,i
+                                il.Emit(OpCodes.Callvirt, fnIsDBNull); // poco,bool
+
+                                // If 'true' is the next thing on the stack, jump to lblNext
+                                il.Emit(OpCodes.Brtrue_S, lblNext); // poco
+
+                            }
+                            // End RideShark Modifications
 
                             il.Emit(OpCodes.Dup);											// poco,poco
 
@@ -388,22 +416,17 @@ namespace NPoco
             {
                 converter = delegate(object src)
                 {
-                    if (src == null)
+                    if (src == null || DBNull.Value.Equals(src))
                     {
                         return false;
                     }
-                    else
+
+                    var srcToString = src.ToString();
+                    if (srcToString == "True" || srcToString == "true" || srcToString.ToLower() == "true")
                     {
-                        var srcToString = src.ToString();
-                        if (srcToString == "True" || srcToString == "true" || srcToString.ToLower() == "true")
-                        {
-                            return true;
-                        }
-                        else
-                        {
-                            return false;
-                        }
+                        return true;
                     }
+                    return false;
                 };
                 return converter;
             }
@@ -413,14 +436,11 @@ namespace NPoco
             {
                 converter = delegate(object src)
                 {
-                    if (src == null)
+                    if (src == null || DBNull.Value.Equals(src))
                     {
                         return string.Empty;
                     }
-                    else if (DBNull.Value.Equals(src))
-                    {
-                        return string.Empty;
-                    }
+                    
                     return src;
                 };
                 return converter;
