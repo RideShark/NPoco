@@ -18,32 +18,38 @@ namespace NPoco
         static FieldInfo fldConverters = typeof(MappingFactory).GetField("m_Converters", BindingFlags.Static | BindingFlags.GetField | BindingFlags.NonPublic);
         static MethodInfo fnListGetItem = typeof(List<Func<object, object>>).GetProperty("Item").GetGetMethod();
         static MethodInfo fnInvoke = typeof(Func<object, object>).GetMethod("Invoke");
-        static Cache<Type, Type> _underlyingTypes = new Cache<Type, Type>();
-        Cache<string, Delegate> _pocoFactories = new Cache<string, Delegate>();
+        static Cache<Type, Type> _underlyingTypes = Cache<Type, Type>.CreateStaticCache();
+
+        //This will use a managed cache with items that expire
+        Cache<string, Delegate> _pocoFactories = Cache<string, Delegate>.CreateManagedCache();
 
         public MappingFactory(PocoData pocoData)
         {
             _pocoData = pocoData;
         }
 
-        public Delegate GetFactory(string sql, string connString, int firstColumn, int countColumns, IDataReader r, object instance)
+        public Delegate GetFactory(int firstColumn, int countColumns, IDataReader r, object instance)
         {
-            // Check cache
-            var key = string.Format("{0}:{1}:{2}:{3}:{4}:{5}", sql, connString, firstColumn, countColumns, instance != GetDefault(_pocoData.type), _pocoData.EmptyNestedObjectNull);
+            //Create a hashed key, we don't want to store so much string data in memory
+            var combiner = new HashCodeCombiner("mapping");
+            combiner.AddType(_pocoData.type);
+            combiner.AddInt(firstColumn);
+            combiner.AddInt(countColumns);
+            for (int col = 0; col < r.FieldCount; col++)
+            {
+                combiner.AddType(r.GetFieldType(col));
+                combiner.AddCaseInsensitiveString(r.GetName(col));
+            }
+            combiner.AddBool(instance != GetDefault(_pocoData.type));
+            combiner.AddBool(_pocoData.EmptyNestedObjectNull);
 
+            var key = combiner.GetCombinedHashCode();
+ 
             Func<Delegate> createFactory = () =>
             {
                 // Create the method
                 var m = new DynamicMethod("poco_factory_" + _pocoFactories.Count, _pocoData.type, new Type[] { typeof(IDataReader), _pocoData.type }, true);
                 var il = m.GetILGenerator();
-
-                // RideShark:
-                //
-                // Comments added for those not familiar with MSIL:
-                // 
-                // OpCodes.Ldarg_0 - Pushes argument 0 (the passed in IDataReader object) to the evaluation stack.
-                // OpCodes.Ldarg_1 - Pushes argument 1 (the Type of the POCO) to the evaluation stack.
-
 
 #if !POCO_NO_DYNAMIC
                 if (_pocoData.type == typeof(object))
@@ -179,15 +185,13 @@ namespace NPoco
                             il.Emit(OpCodes.Ldc_I4, i - firstColumn);                       // arr,arr,value,i
                             il.Emit(OpCodes.Callvirt, valueset);                            // arr
 
-                            il.MarkLabel(lblNext);
+                            il.MarkLabel(lblNext);                  
                         }
 
                         il.Emit(OpCodes.Castclass, _pocoData.type);
                     }
                     else
                     {
-
-                        // Push either the passed in POCO, or a new POCO of the same type, onto the evaluation stack.
                         if (instance != null)
                         {
                             il.Emit(OpCodes.Ldarg_1);
@@ -202,13 +206,11 @@ namespace NPoco
                             il.Emit(OpCodes.Newobj, constructorInfo);
                         }
 
-                        // Declare a local variable ('a')
                         LocalBuilder a = il.DeclareLocal(typeof(Int32));
                         if (_pocoData.EmptyNestedObjectNull)
                         {
-
-                            il.Emit(OpCodes.Ldc_I4, 0);     
-                            il.Emit(OpCodes.Stloc, a);      // store poco in 'a' if EmptyNestedObjectNull.
+                            il.Emit(OpCodes.Ldc_I4, 0);
+                            il.Emit(OpCodes.Stloc, a);
                         }
 
                         // Enumerate all fields generating a set assignment for the column
@@ -221,7 +223,7 @@ namespace NPoco
                             {
                                 var pcAlias = _pocoData.Columns.Values.SingleOrDefault(x => x.AutoAlias == r.GetName(i))
                                     ?? _pocoData.Columns.Values.SingleOrDefault(x => string.Equals(x.ColumnAlias, r.GetName(i), StringComparison.OrdinalIgnoreCase));
-
+                                
                                 if (pcAlias != null)
                                 {
                                     pc = pcAlias;
@@ -231,36 +233,17 @@ namespace NPoco
                                     continue;
                                 }
                             }
-                            // Modified for RideShark
-
-
-                            // Create a label which can be used to go to the next field. 
-                            // (lblNext is inserted into the MSIL stream at the end of the for loop)
-                            var lblNext = il.DefineLabel();
 
                             // Get the source type for this column
                             var srcType = r.GetFieldType(i);
                             var dstType = pc.MemberInfo.GetMemberInfoType();
 
-
-                            // Original NPoco functionality checks if something is DBNull for every field, 
-                            // then continues the loop if it is.
-                            // 
-                            // We want to disable this jumping if the source and destination types are both strings
-                            if (srcType != typeof(string) && dstType != typeof (string))
-                            {
-                                // "if (!rdr.IsDBNull(i))"
-                                il.Emit(OpCodes.Ldarg_0); // poco,rdr
-                                
-                                // IDataReader.IsDBNull takes an index of the field to check the DB Null value on.
-                                il.Emit(OpCodes.Ldc_I4, i); // poco,rdr,i
-                                il.Emit(OpCodes.Callvirt, fnIsDBNull); // poco,bool
-
-                                // If 'true' is the next thing on the stack, jump to lblNext
-                                il.Emit(OpCodes.Brtrue_S, lblNext); // poco
-
-                            }
-                            // End RideShark Modifications
+                            // "if (!rdr.IsDBNull(i))"
+                            il.Emit(OpCodes.Ldarg_0);										// poco,rdr
+                            il.Emit(OpCodes.Ldc_I4, i);										// poco,rdr,i
+                            il.Emit(OpCodes.Callvirt, fnIsDBNull);							// poco,bool
+                            var lblNext = il.DefineLabel();
+                            il.Emit(OpCodes.Brtrue_S, lblNext);								// poco
 
                             il.Emit(OpCodes.Dup);											// poco,poco
 
@@ -326,7 +309,7 @@ namespace NPoco
                         if (fnOnLoaded != null)
                         {
                             il.Emit(OpCodes.Dup);
-                            il.Emit(OpCodes.Callvirt, (MethodInfo)fnOnLoaded);
+                            il.Emit(OpCodes.Callvirt, (MethodInfo) fnOnLoaded);
                         }
 
                         if (_pocoData.EmptyNestedObjectNull)
@@ -384,14 +367,6 @@ namespace NPoco
             }
         }
 
-        /// <summary>
-        /// Return a lambda to convert SQL Types to CLR types correctly.
-        /// </summary>
-        /// <param name="mapper"></param>
-        /// <param name="pc"></param>
-        /// <param name="srcType"></param>
-        /// <param name="dstType"></param>
-        /// <returns></returns>
         public static Func<object, object> GetConverter(IMapper mapper, PocoColumn pc, Type srcType, Type dstType)
         {
             Func<object, object> converter = null;
@@ -408,41 +383,6 @@ namespace NPoco
             if (pc != null && pc.ForceToUtc && srcType == typeof(DateTime) && (dstType == typeof(DateTime) || dstType == typeof(DateTime?)))
             {
                 converter = delegate(object src) { return new DateTime(((DateTime)src).Ticks, DateTimeKind.Utc); };
-                return converter;
-            }
-
-            // RideShark - VarChar(5) to Boolean Mapper
-            if (srcType == typeof(string) && dstType == typeof(Boolean))
-            {
-                converter = delegate(object src)
-                {
-                    if (src == null || DBNull.Value.Equals(src))
-                    {
-                        return false;
-                    }
-
-                    var srcToString = src.ToString();
-                    if (srcToString == "True" || srcToString == "true" || srcToString.ToLower() == "true")
-                    {
-                        return true;
-                    }
-                    return false;
-                };
-                return converter;
-            }
-
-            // RideShark - Null string to blank string
-            if (srcType == typeof(string) && dstType == typeof(string))
-            {
-                converter = delegate(object src)
-                {
-                    if (src == null || DBNull.Value.Equals(src))
-                    {
-                        return string.Empty;
-                    }
-                    
-                    return src;
-                };
                 return converter;
             }
 

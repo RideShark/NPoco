@@ -28,6 +28,13 @@ namespace NPoco.Tests.FluentTests.QueryTests
         }
 
         [Test]
+        public void FetchWhereExpressionEquals()
+        {
+            var users = Database.FetchWhere<User>(y => y.UserId.Equals(2));
+            Assert.AreEqual(1, users.Count);
+        }
+
+        [Test]
         public void FetchOnWithSecondGenericType()
         {
             var s = new DefaultSqlExpression<User>(Database, true);
@@ -97,6 +104,13 @@ namespace NPoco.Tests.FluentTests.QueryTests
             var users = Database.FetchBy<UserDecorated>(y => y.Where(x => x.Name.StartsWith("Na")));
             Assert.AreEqual(15, users.Count);
         }
+       
+        [Test]
+        public void FetchByExpressionAndDoesNotStartsWith()
+        {
+            var users = Database.FetchBy<UserDecorated>(y => y.Where(x => !x.Name.StartsWith("Na")));
+            Assert.AreEqual(0, users.Count);
+        }
 
         [Test]
         public void FetchByExpressionAndEndsWith()
@@ -110,6 +124,13 @@ namespace NPoco.Tests.FluentTests.QueryTests
         {
             var users = Database.FetchBy<UserDecorated>(y => y.Select(x => new {Name = x.Name.Substring(0, 2)}));
             Assert.AreEqual("Na", users[0].Name);
+        }
+
+        [Test]
+        public void FetchByExpressionAndSelectWithSubstring2()
+        {
+            var users = Database.FetchBy<UserDecorated>(y => y.Select(x => new { Name = x.Name.Substring(2) }));
+            Assert.AreEqual("me1", users[0].Name);
         }
 
         [Test]
@@ -143,6 +164,19 @@ namespace NPoco.Tests.FluentTests.QueryTests
             for (int i = 0; i < users.Count; i++)
             {
                 AssertUserValues(InMemoryUsers[i], users[i]);
+            }
+        }
+
+        [Test]
+        public void FetchWithWhereExpressionNotContains()
+        {
+            var list = new[] { 1, 2, 3, 4 };
+            var users = Database.FetchBy<User>(y => y.Where(x => !list.Contains(x.UserId)));
+
+            Assert.AreEqual(11, users.Count);
+            for (int i = 0; i < users.Count; i++)
+            {
+                AssertUserValues(InMemoryUsers[i+4], users[i]);
             }
         }
 
