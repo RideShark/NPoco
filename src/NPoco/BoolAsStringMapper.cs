@@ -8,7 +8,7 @@ using System.Text;
 
 namespace NPoco
 {
-    class BoolAsStringMapper : DefaultMapper 
+    public class BoolAsStringMapper : DefaultMapper 
     {
         public override Func<object, object> GetFromDbConverter(Type destType, Type sourceType)
         {
