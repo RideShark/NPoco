@@ -135,6 +135,10 @@ namespace NPoco.Tests.Common
                     ID int IDENTITY(1,1) PRIMARY KEY NOT NULL, 
                     Description nvarchar(200) NOT NULL,
                     TextData nvarchar(512) NULL, 
+                    TextData2 varchar(2355) NULL, 
+                    TextData3 varchar(7899) NULL, 
+                    TextData4 varchar(2453) NULL, 
+                    TextData5 varchar(512) NULL, 
                     BoolValue varchar(5) NULL
                 );
             ";

@@ -15,6 +15,14 @@ namespace NPoco.Tests.Common
 
         public string TextData { get; set; }
 
+        public string TextData2 { get; set; }
+
+        public string TextData3 { get; set; }
+
+        public string TextData4 { get; set; }
+
+        public string TextData5 { get; set; }
+
         public bool BoolValue { get; set; }
     }
 }

@@ -45,5 +45,15 @@ namespace NPoco.Tests.DecoratedTests.QueryTests
             Assert.AreEqual("", result.TextData);
         }
 
+        [Test]
+        public void MixedNullsConvertProperly()
+        {
+            var result = FetchDescription(EvenTextDataNullsDatum).First();
+            Assert.AreEqual("123", result.TextData);
+            Assert.AreEqual("", result.TextData2);
+            Assert.AreEqual("456", result.TextData3);
+            Assert.AreEqual("", result.TextData4);
+            Assert.AreEqual("789", result.TextData5);
+        }
     }
 }

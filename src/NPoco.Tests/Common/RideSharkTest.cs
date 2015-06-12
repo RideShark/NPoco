@@ -17,6 +17,7 @@ namespace NPoco.Tests.Common
         public const string NullStringDatum = "NullStringDatum";
         public const string NullBoolDatum = "NullBoolDatum";
         public const string StringIs123Datum = "StringIs123Datum";
+        public const string EvenTextDataNullsDatum = "EvenTextDataNullsDatum";
         public const string TrueBoolDatum = "TrueBoolDatum";
         public const string FalseBoolDatum = "FalseBoolDatum";
 
@@ -120,6 +121,18 @@ namespace NPoco.Tests.Common
             };
             Database.Insert(falseBoolDatum );
             InMemoryRideSharkTestDataset.Add(falseBoolDatum);
+
+
+            var evenTextDataNullsDatum = new RideSharkTestData
+            {
+                Id = id++,
+                Description = EvenTextDataNullsDatum,
+                TextData = "123",
+                TextData3 = "456",
+                TextData5 = "789"
+            };
+            Database.Insert(evenTextDataNullsDatum);
+            InMemoryRideSharkTestDataset.Add(evenTextDataNullsDatum);
 
 
             var count = Database.ExecuteScalar<int>("SELECT COUNT(Id) FROM RideSharkTestData");
