@@ -137,6 +137,7 @@ namespace NPoco.Tests.Common
                     TextData nvarchar(512) NULL, 
                     TextData2 varchar(2355) NULL, 
                     TextData3 varchar(7899) NULL, 
+                    SomeInteger int NULL, 
                     TextData4 varchar(2453) NULL, 
                     TextData5 varchar(512) NULL, 
                     BoolValue varchar(5) NULL

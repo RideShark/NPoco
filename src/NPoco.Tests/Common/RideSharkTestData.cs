@@ -23,6 +23,8 @@ namespace NPoco.Tests.Common
 
         public string TextData5 { get; set; }
 
+        public int? SomeInteger { get; set; }
+
         public bool BoolValue { get; set; }
     }
 }

@@ -54,6 +54,7 @@ namespace NPoco.Tests.DecoratedTests.QueryTests
             Assert.AreEqual("456", result.TextData3);
             Assert.AreEqual("", result.TextData4);
             Assert.AreEqual("789", result.TextData5);
+            Assert.AreEqual(false, result.SomeInteger.HasValue);
         }
     }
 }
