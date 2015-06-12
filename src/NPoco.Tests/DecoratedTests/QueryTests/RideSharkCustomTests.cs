@@ -14,35 +14,35 @@ namespace NPoco.Tests.DecoratedTests.QueryTests
         public void NullVarchar5IsFalse()
         {
             var result = FetchDescription(NullBoolDatum).First();
-            Assert.Equals(result.BoolValue, false);
+            Assert.AreEqual(false, result.BoolValue);
         }
 
         [Test]
         public void StrTrueVarchar5IsTrue()
         {
             var result = FetchDescription(TrueBoolDatum ).First();
-            Assert.Equals(result.BoolValue, true);
+            Assert.AreEqual(true, result.BoolValue);
         }
 
         [Test]
         public void StrFalseVarchar5IsFalse()
         {
             var result = FetchDescription(FalseBoolDatum ).First();
-            Assert.Equals(result.BoolValue, false);
+            Assert.AreEqual(false, result.BoolValue);
         }
 
         [Test]
         public void StringsProperlyReturn()
         {
             var result = FetchDescription(StringIs123Datum ).First();
-            Assert.Equals(result.TextData , "123");
+            Assert.AreEqual("123", result.TextData);
         }
 
         [Test]
         public void NullStringsConvertToEmptyString()
         {
             var result = FetchDescription(NullStringDatum).First();
-            Assert.Equals(result.TextData, "");
+            Assert.AreEqual("", result.TextData);
         }
 
     }

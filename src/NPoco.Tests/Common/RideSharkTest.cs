@@ -23,6 +23,7 @@ namespace NPoco.Tests.Common
         public RideSharkTest (): base()
         {
             InMemoryRideSharkTestDataset = new List<RideSharkTestData>();
+
         }
 
         [SetUp]
@@ -39,6 +40,7 @@ namespace NPoco.Tests.Common
                 case 2: // SQL Local DB
                     TestDatabase = new SQLLocalDatabase();
                     Database = new Database(TestDatabase.Connection, new SqlServer2008DatabaseType(), IsolationLevel.ReadUncommitted); // Need read uncommitted for the transaction tests
+                    Database.Mapper = new BoolAsStringMapper();
                     break;
 
                 case 3: // SQL Server
@@ -70,6 +72,7 @@ namespace NPoco.Tests.Common
 
             TestDatabase.CleanupDataBase();
             TestDatabase.Dispose();
+            InMemoryRideSharkTestDataset = new List<RideSharkTestData>();
         }
 
         protected void InsertRideSharkTestData()
@@ -78,8 +81,7 @@ namespace NPoco.Tests.Common
             var nullStringTest = new RideSharkTestData
             {
                 Id= id++,
-                Description = NullStringDatum,
-                TextData = null
+                Description = NullStringDatum
             };
             Database.Insert(nullStringTest);
             InMemoryRideSharkTestDataset.Add(nullStringTest);
@@ -130,7 +132,7 @@ namespace NPoco.Tests.Common
 
         public List<RideSharkTestData> FetchDescription(string desc)
         {
-            return Database.Fetch<RideSharkTestData>("Description = @0", desc);
+            return Database.Fetch<RideSharkTestData>("SELECT * FROM RideSharkTestData WHERE Description = @0", desc);
         }
     }
 }

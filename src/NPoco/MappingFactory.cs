@@ -261,11 +261,11 @@ namespace NPoco
                             // then continues the loop if it is.
                             // 
                             // We want to disable this jumping if the source and destination types are both strings
-                            if (srcType != typeof(string) && dstType != typeof (string))
+                            if (srcType != typeof (string) && dstType != typeof (string))
                             {
                                 // "if (!rdr.IsDBNull(i))"
                                 il.Emit(OpCodes.Ldarg_0); // poco,rdr
-                                
+
                                 // IDataReader.IsDBNull takes an index of the field to check the DB Null value on.
                                 il.Emit(OpCodes.Ldc_I4, i); // poco,rdr,i
                                 il.Emit(OpCodes.Callvirt, fnIsDBNull); // poco,bool
@@ -273,6 +273,34 @@ namespace NPoco
                                 // If 'true' is the next thing on the stack, jump to lblNext
                                 il.Emit(OpCodes.Brtrue_S, lblNext); // poco
 
+                            }
+                            else
+                            {
+                                var lblSkipConvertNullString = il.DefineLabel();
+                                // "if (!rdr.IsDBNull(i))"
+                                il.Emit(OpCodes.Ldarg_0); // poco,rdr
+
+                                // IDataReader.IsDBNull takes an index of the field to check the DB Null value on.
+                                il.Emit(OpCodes.Ldc_I4, i); // poco,rdr,i
+                                il.Emit(OpCodes.Callvirt, fnIsDBNull); // poco,bool
+                                // If 'false', then skil converting the null string
+                                il.Emit(OpCodes.Brfalse_S , lblSkipConvertNullString); // poco
+
+                                // Add the empty string here.
+                                il.Emit(OpCodes.Dup);						// poco,poco
+                                il.Emit(OpCodes.Ldstr, "");                 // poco,poco,""
+                                PushMemberOntoStack(il, pc); //poco
+
+
+                                if (_pocoData.EmptyNestedObjectNull)
+                                {
+                                    il.Emit(OpCodes.Ldloc, a); // poco, a
+                                    il.Emit(OpCodes.Ldc_I4, 1); // poco, a, 1
+                                    il.Emit(OpCodes.Add); // poco, a+1
+                                    il.Emit(OpCodes.Stloc, a); // poco
+                                }
+                                il.Emit(OpCodes.Br_S, lblNext);
+                                il.MarkLabel(lblSkipConvertNullString);
                             }
                             // End RideShark Modifications
 
@@ -424,22 +452,6 @@ namespace NPoco
                 converter = delegate(object src) { return new DateTime(((DateTime)src).Ticks, DateTimeKind.Utc); };
                 return converter;
             }
-
-            // RideShark - VarChar(5) to Boolean Mapper
-            if (srcType == typeof(string) && dstType == typeof(Boolean))
-            {
-                converter = delegate(object src)
-                {
-                    var srcToString = src.ToString();
-                    if (srcToString == "True" || srcToString == "true" || srcToString.ToLower() == "true")
-                    {
-                        return true;
-                    }
-                    return false;
-                };
-                return converter;
-            }
-
 
             // Forced type conversion including integral types -> enum
             var underlyingType = _underlyingTypes.Get(dstType, () => Nullable.GetUnderlyingType(dstType));
