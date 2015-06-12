@@ -261,20 +261,7 @@ namespace NPoco
                             // then continues the loop if it is.
                             // 
                             // We want to disable this jumping if the source and destination types are both strings
-                            if (srcType != typeof (string) && dstType != typeof (string))
-                            {
-                                // "if (!rdr.IsDBNull(i))"
-                                il.Emit(OpCodes.Ldarg_0); // poco,rdr
-
-                                // IDataReader.IsDBNull takes an index of the field to check the DB Null value on.
-                                il.Emit(OpCodes.Ldc_I4, i); // poco,rdr,i
-                                il.Emit(OpCodes.Callvirt, fnIsDBNull); // poco,bool
-
-                                // If 'true' is the next thing on the stack, jump to lblNext
-                                il.Emit(OpCodes.Brtrue_S, lblNext); // poco
-
-                            }
-                            else
+                            if (srcType == typeof (string) && dstType == typeof (string))
                             {
                                 var lblSkipConvertNullString = il.DefineLabel();
                                 // "if (!rdr.IsDBNull(i))"
@@ -284,13 +271,19 @@ namespace NPoco
                                 il.Emit(OpCodes.Ldc_I4, i); // poco,rdr,i
                                 il.Emit(OpCodes.Callvirt, fnIsDBNull); // poco,bool
                                 // If 'false', then skil converting the null string
-                                il.Emit(OpCodes.Brfalse_S , lblSkipConvertNullString); // poco
+                                il.Emit(OpCodes.Brfalse_S, lblSkipConvertNullString); // poco
 
-                                // Add the empty string here.
-                                il.Emit(OpCodes.Dup);						// poco,poco
-                                il.Emit(OpCodes.Ldstr, "");                 // poco,poco,""
+                                // This code will add a blank string if it's not converted.
+
+                                il.Emit(OpCodes.Dup);											// poco,poco
+
+                                // Add the empty string value here.
+                                il.Emit(OpCodes.Ldstr, "");
+
+                                // Box it up?
+                                il.Emit(OpCodes.Unbox_Any, typeof(string));
+
                                 PushMemberOntoStack(il, pc); //poco
-
 
                                 if (_pocoData.EmptyNestedObjectNull)
                                 {
@@ -301,6 +294,18 @@ namespace NPoco
                                 }
                                 il.Emit(OpCodes.Br_S, lblNext);
                                 il.MarkLabel(lblSkipConvertNullString);
+                            }
+                            else
+                            {
+                                // "if (!rdr.IsDBNull(i))"
+                                il.Emit(OpCodes.Ldarg_0); // poco,rdr
+
+                                // IDataReader.IsDBNull takes an index of the field to check the DB Null value on.
+                                il.Emit(OpCodes.Ldc_I4, i); // poco,rdr,i
+                                il.Emit(OpCodes.Callvirt, fnIsDBNull); // poco,bool
+
+                                // If 'true' is the next thing on the stack, jump to lblNext
+                                il.Emit(OpCodes.Brtrue_S, lblNext); // poco
                             }
                             // End RideShark Modifications
 
