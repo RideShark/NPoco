@@ -430,11 +430,6 @@ namespace NPoco
             {
                 converter = delegate(object src)
                 {
-                    if (src == null || DBNull.Value.Equals(src))
-                    {
-                        return false;
-                    }
-
                     var srcToString = src.ToString();
                     if (srcToString == "True" || srcToString == "true" || srcToString.ToLower() == "true")
                     {
@@ -445,20 +440,6 @@ namespace NPoco
                 return converter;
             }
 
-            // RideShark - Null string to blank string
-            if (srcType == typeof(string) && dstType == typeof(string))
-            {
-                converter = delegate(object src)
-                {
-                    if (src == null || DBNull.Value.Equals(src))
-                    {
-                        return string.Empty;
-                    }
-                    
-                    return src;
-                };
-                return converter;
-            }
 
             // Forced type conversion including integral types -> enum
             var underlyingType = _underlyingTypes.Get(dstType, () => Nullable.GetUnderlyingType(dstType));

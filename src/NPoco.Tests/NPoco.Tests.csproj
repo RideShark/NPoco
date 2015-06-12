@@ -67,6 +67,8 @@
     <Compile Include="Common\FirebirdDefaultMapper.cs" />
     <Compile Include="Common\InMemoryDatabase.cs" />
     <Compile Include="Common\AdHocUser.cs" />
+    <Compile Include="Common\RideSharkTest.cs" />
+    <Compile Include="Common\RideSharkTestData.cs" />
     <Compile Include="Common\SQLLocalDatabase.cs" />
     <Compile Include="Common\TestDatabase.cs" />
     <Compile Include="Common\User.cs" />
@@ -83,6 +85,7 @@
     <Compile Include="DecoratedTests\QueryTests\OneToManyDecoratedTests.cs" />
     <Compile Include="DecoratedTests\QueryTests\FetchAndQueryDecoratedTests.cs" />
     <Compile Include="DecoratedTests\QueryTests\PagingDecoratedTest.cs" />
+    <Compile Include="DecoratedTests\QueryTests\RideSharkCustomTests.cs" />
     <Compile Include="DecoratedTests\QueryTests\SingleAndFirstQueryDecoratedTest.cs" />
     <Compile Include="DecoratedTests\TransactionDecoratedTests.cs" />
     <Compile Include="FluentMappings\MapTests.cs" />

@@ -130,6 +130,16 @@ namespace NPoco.Tests.Common
             ";
             cmd.ExecuteNonQuery();
 
+            cmd.CommandText = @"
+                CREATE TABLE RideSharkTestData(
+                    ID int IDENTITY(1,1) PRIMARY KEY NOT NULL, 
+                    Description nvarchar(200) NOT NULL,
+                    TextData nvarchar(512) NULL, 
+                    BoolValue varchar(5) NULL
+                );
+            ";
+            cmd.ExecuteNonQuery();
+
             Console.WriteLine("Tables (CreateDB): " + Environment.NewLine);
             var dt = conn.GetSchema("Tables");
             foreach (DataRow row in dt.Rows)
