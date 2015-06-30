@@ -1399,14 +1399,6 @@ namespace NPoco
 
                 object value = ProcessMapper(i.Value, i.Value.GetValue(poco));
 
-                
-                // For Rideshark, boolean values must be converted to 'True' or 'False'.
-                if (i.Value.ColumnType == typeof (bool) ||
-                    i.Value.ColumnType == typeof (Boolean) )
-                {
-                    value = ((bool)value) ? "True" : "False";
-                }
-
                 if (i.Value.VersionColumn)
                 {
                     versionName = i.Key;
