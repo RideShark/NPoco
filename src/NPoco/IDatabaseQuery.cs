@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
-using System.Linq.Expressions;
 using NPoco.Expressions;
 using NPoco.Linq;
+#if NET45
+using System.Threading.Tasks;
+#endif
 
 namespace NPoco
 {
@@ -15,13 +17,12 @@ namespace NPoco
         int Execute(Sql sql);
         T ExecuteScalar<T>(string sql, params object[] args);
         T ExecuteScalar<T>(Sql sql);
+        List<T> FetchBy<T>(Func<SqlExpression<T>, SqlExpression<T>> expression);
         List<T> Fetch<T>();
         List<T> Fetch<T>(string sql, params object[] args);
         List<T> Fetch<T>(Sql sql);
         List<T> Fetch<T>(long page, long itemsPerPage, string sql, params object[] args);
         List<T> Fetch<T>(long page, long itemsPerPage, Sql sql);
-        List<T> FetchBy<T>(Func<SqlExpression<T>, SqlExpression<T>> expression);
-        List<T> FetchWhere<T>(Expression<Func<T, bool>> expression);
         Page<T> Page<T>(long page, long itemsPerPage, string sql, params object[] args);
         Page<T> Page<T>(long page, long itemsPerPage, Sql sql);
         List<T> SkipTake<T>(long skip, long take, string sql, params object[] args);
@@ -66,6 +67,10 @@ namespace NPoco
         Page<T1> Page<T1, T2, T3, T4>(long page, long itemsPerpage, Sql sql);
         IEnumerable<T> Query<T>(string sql, params object[] args);
         IEnumerable<T> Query<T>(Sql sql);
+        IEnumerable<object> Query(Type type, string sql, params object[] args);
+        IEnumerable<object> Query(Type type, Sql sql);
+        IEnumerable<object> Fetch(Type type, string sql, params object[] args);
+        IEnumerable<object> Fetch(Type type, Sql sql);
         IQueryProviderWithIncludes<T> Query<T>();
         T SingleById<T>(object primaryKey);
         T SingleOrDefaultById<T>(object primaryKey);
@@ -104,5 +109,43 @@ namespace NPoco
         Tuple<List<T1>, List<T2>, List<T3>> FetchMultiple<T1, T2, T3>(Sql sql);
         Tuple<List<T1>, List<T2>, List<T3>, List<T4>> FetchMultiple<T1, T2, T3, T4>(Sql sql);
 
+#if NET45
+        Task<T> SingleByIdAsync<T>(object primaryKey);
+        Task<T> SingleOrDefaultByIdAsync<T>(object primaryKey);
+
+        Task<IEnumerable<T>> QueryAsync<T>(string sql, object[] args);
+        Task<IEnumerable<T>> QueryAsync<T>(Sql sql);
+        Task<IEnumerable<T>> QueryAsync<T>(Type[] types, Delegate cb, Sql sql);
+
+        Task<List<T>> FetchAsync<T>(string sql, params object[] args);
+        Task<List<T>> FetchAsync<T>(Sql sql);
+
+        Task<List<T1>> FetchAsync<T1, T2>(Sql sql);
+        Task<List<T1>> FetchAsync<T1, T2, T3>(Sql sql);
+        Task<List<T1>> FetchAsync<T1, T2, T3, T4>(Sql sql);
+        Task<IEnumerable<T1>> QueryAsync<T1, T2>(Sql sql);
+        Task<IEnumerable<T1>> QueryAsync<T1, T2, T3>(Sql sql);
+        Task<IEnumerable<T1>> QueryAsync<T1, T2, T3, T4>(Sql sql);
+        Task<List<T1>> FetchAsync<T1, T2>(string sql, params object[] args);
+        Task<List<T1>> FetchAsync<T1, T2, T3>(string sql, params object[] args);
+        Task<List<T1>> FetchAsync<T1, T2, T3, T4>(string sql, params object[] args);
+        Task<IEnumerable<T1>> QueryAsync<T1, T2>(string sql, params object[] args);
+        Task<IEnumerable<T1>> QueryAsync<T1, T2, T3>(string sql, params object[] args);
+        Task<IEnumerable<T1>> QueryAsync<T1, T2, T3, T4>(string sql, params object[] args);
+
+        Task<Page<T>> PageAsync<T>(long page, long itemsPerPage, string sql, params object[] args);
+        Task<Page<T>> PageAsync<T>(long page, long itemsPerPage, Sql sql); 
+        Task<Page<T>> PageAsync<T>(Type[] types, Delegate cb, long page, long itemsPerPage, string sql, params object[] args);
+
+        Task<List<T>> FetchAsync<T>(long page, long itemsPerPage, string sql, params object[] args);
+        Task<List<T>> FetchAsync<T>(long page, long itemsPerPage, Sql sql);
+        Task<List<T>> SkipTakeAsync<T>(long skip, long take, string sql, params object[] args);
+        Task<List<T>> SkipTakeAsync<T>(long skip, long take, Sql sql);
+        
+        Task<T> ExecuteScalarAsync<T>(string sql, object[] args);
+        Task<T> ExecuteScalarAsync<T>(Sql sql);
+        Task<int> ExecuteAsync(string sql, params object[] args);
+        Task<int> ExecuteAsync(Sql sql);
+#endif
     }
 }

@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
-using System.Text;
 using NPoco.Expressions;
 
 namespace NPoco.Linq
@@ -25,6 +24,20 @@ namespace NPoco.Linq
         IEnumerable<T> ToEnumerable();
         Page<T> ToPage(int page, int pageSize);
         List<T2> ProjectTo<T2>(Expression<Func<T, T2>> projectionExpression);
+        List<T2> Distinct<T2>(Expression<Func<T, T2>> projectionExpression);
+        List<T> Distinct();
+#if NET45
+        System.Threading.Tasks.Task<List<T>> ToListAsync();
+        System.Threading.Tasks.Task<IEnumerable<T>> ToEnumerableAsync();
+        System.Threading.Tasks.Task<T> FirstOrDefaultAsync();
+        System.Threading.Tasks.Task<T> FirstAsync();
+        System.Threading.Tasks.Task<T> SingleOrDefaultAsync();
+        System.Threading.Tasks.Task<T> SingleAsync();
+        System.Threading.Tasks.Task<int> CountAsync();
+        System.Threading.Tasks.Task<bool> AnyAsync();
+        System.Threading.Tasks.Task<Page<T>> ToPageAsync(int page, int pageSize);
+        System.Threading.Tasks.Task<List<T2>> ProjectToAsync<T2>(Expression<Func<T, T2>> projectionExpression);
+#endif
     }
 
     public interface IQueryProvider<T> : IQueryResultProvider<T>
@@ -110,7 +123,6 @@ namespace NPoco.Linq
         {
             if (whereExpression != null)
                 _sqlExpression = _sqlExpression.Where(whereExpression);
-            _sqlExpression = _sqlExpression.Limit(1);
         }
 
         public T FirstOrDefault()
@@ -167,7 +179,7 @@ namespace NPoco.Linq
             if (whereExpression != null)
                 _sqlExpression = _sqlExpression.Where(whereExpression);
 
-            var sql = _buildComplexSql.BuildJoin(_database, _sqlExpression, _joinSqlExpressions.Values.ToList(), null, true);
+            var sql = _buildComplexSql.BuildJoin(_database, _sqlExpression, _joinSqlExpressions.Values.ToList(), null, true, false);
 
             return _database.ExecuteScalar<int>(sql);
         }
@@ -183,6 +195,16 @@ namespace NPoco.Linq
         }
 
         public Page<T> ToPage(int page, int pageSize)
+        {
+            return ToPage(page, pageSize, (paged, action) =>
+            {
+                var list = ToList();
+                action(paged, list);
+                return paged;
+            });
+        }
+
+        private TRet ToPage<TRet>(int page, int pageSize, Func<Page<T>, Action<Page<T>, List<T>>, TRet> executeFunc)
         {
             int offset = (page - 1) * pageSize;
 
@@ -201,16 +223,30 @@ namespace NPoco.Linq
             _database.OneTimeCommandTimeout = saveTimeout;
 
             _sqlExpression = _sqlExpression.Limit(offset, pageSize);
-            result.Items = ToList();
 
-            return result;
+            return executeFunc(result, (paged, list) =>
+            {
+                paged.Items = list;
+            });
         }
 
         public List<T2> ProjectTo<T2>(Expression<Func<T, T2>> projectionExpression)
         {
             var types = new[] { typeof(T) }.Concat(_joinSqlExpressions.Values.Select(x => x.Type)).ToArray();
-            var sql = _buildComplexSql.GetSqlForProjection(projectionExpression, types);
+            var sql = _buildComplexSql.GetSqlForProjection(projectionExpression, types, false);
             return _database.Query<T>(types, null, sql).Select(projectionExpression.Compile()).ToList();
+        }
+
+        public List<T2> Distinct<T2>(Expression<Func<T, T2>> projectionExpression)
+        {
+            var types = new[] { typeof(T) }.Concat(_joinSqlExpressions.Values.Select(x => x.Type)).ToArray();
+            var sql = _buildComplexSql.GetSqlForProjection(projectionExpression, types, true);
+            return _database.Query<T>(types, null, sql).Select(projectionExpression.Compile()).ToList();
+        }
+
+        public List<T> Distinct()
+        {
+            return _database.Query<T>(_sqlExpression.Context.ToSelectStatement(true, true), _sqlExpression.Context.Params).ToList();
         }
 
         public List<T> ToList()
@@ -224,9 +260,78 @@ namespace NPoco.Linq
                 return _database.Query<T>(_sqlExpression.Context.ToSelectStatement(), _sqlExpression.Context.Params);
 
             var types = new[] { typeof(T) }.Concat(_joinSqlExpressions.Values.Select(x => x.Type)).ToArray();
-            var sql = _buildComplexSql.BuildJoin(_database, _sqlExpression, _joinSqlExpressions.Values.ToList(), null, false);
+            var sql = _buildComplexSql.BuildJoin(_database, _sqlExpression, _joinSqlExpressions.Values.ToList(), null, false, false);
             return _database.Query<T>(types, null, sql);
         }
+
+#if NET45
+        public async System.Threading.Tasks.Task<List<T>> ToListAsync()
+        {
+            return (await ToEnumerableAsync().ConfigureAwait(false)).ToList();
+        }
+
+        public System.Threading.Tasks.Task<IEnumerable<T>> ToEnumerableAsync()
+        {
+            if (!_joinSqlExpressions.Any())
+                return _database.QueryAsync<T>(_sqlExpression.Context.ToSelectStatement(), _sqlExpression.Context.Params);
+
+            var types = new[] { typeof(T) }.Concat(_joinSqlExpressions.Values.Select(x => x.Type)).ToArray();
+            var sql = _buildComplexSql.BuildJoin(_database, _sqlExpression, _joinSqlExpressions.Values.ToList(), null, false, false);
+            return _database.QueryAsync<T>(types, null, sql);
+        }
+
+        public async System.Threading.Tasks.Task<T> FirstOrDefaultAsync()
+        {
+            AddLimitAndWhere(null);
+            return (await ToEnumerableAsync().ConfigureAwait(false)).FirstOrDefault();
+        }
+
+        public async System.Threading.Tasks.Task<T> FirstAsync()
+        {
+            AddLimitAndWhere(null);
+            return (await ToEnumerableAsync().ConfigureAwait(false)).First();
+        }
+
+        public async System.Threading.Tasks.Task<T> SingleOrDefaultAsync()
+        {
+            AddLimitAndWhere(null);
+            return (await ToEnumerableAsync().ConfigureAwait(false)).SingleOrDefault();
+        }
+
+        public async System.Threading.Tasks.Task<T> SingleAsync()
+        {
+            AddLimitAndWhere(null);
+            return (await ToEnumerableAsync().ConfigureAwait(false)).Single();
+        }
+
+        public async System.Threading.Tasks.Task<int> CountAsync()
+        {
+            var sql = _buildComplexSql.BuildJoin(_database, _sqlExpression, _joinSqlExpressions.Values.ToList(), null, true, false);
+            return await _database.ExecuteScalarAsync<int>(sql).ConfigureAwait(false);
+        }
+
+        public async System.Threading.Tasks.Task<bool> AnyAsync()
+        {
+            return (await CountAsync().ConfigureAwait(false)) > 0;
+        }
+
+        public System.Threading.Tasks.Task<Page<T>> ToPageAsync(int page, int pageSize)
+        {
+            return ToPage(page, pageSize, async (paged, action) =>
+            {
+                var list = await ToListAsync().ConfigureAwait(false);
+                action(paged, list);
+                return paged;
+            });
+        }
+
+        public async System.Threading.Tasks.Task<List<T2>> ProjectToAsync<T2>(Expression<Func<T, T2>> projectionExpression)
+        {
+            var types = new[] { typeof(T) }.Concat(_joinSqlExpressions.Values.Select(x => x.Type)).ToArray();
+            var sql = _buildComplexSql.GetSqlForProjection(projectionExpression, types, false);
+            return (await _database.QueryAsync<T>(types, null, sql).ConfigureAwait(false)).Select(projectionExpression.Compile()).ToList();
+        }
+#endif
 
         public IQueryProvider<T> Limit(int rows)
         {

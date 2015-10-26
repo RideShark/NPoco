@@ -45,7 +45,7 @@ namespace NPoco.Tests.Common
                 case 2: // SQL Local DB
                 case 3: // SQL Server
                     TestDatabase = new SQLLocalDatabase();
-                    Database = dbFactory.Build(new Database(TestDatabase.Connection, new SqlServer2008DatabaseType()));
+                    Database = dbFactory.Build(new Database(TestDatabase.Connection, new SqlServer2008DatabaseType() { UseOutputClause = true }));
                     break;
 
                 case 4: // SQL CE
@@ -78,7 +78,7 @@ namespace NPoco.Tests.Common
             TestDatabase.Dispose();
         }
 
-        protected void InsertData()
+        protected virtual void InsertData()
         {
             InMemoryUsers = new List<User>();
             InMemoryExtraUserInfos = new List<ExtraUserInfo>();
@@ -103,10 +103,12 @@ namespace NPoco.Tests.Common
                     DateOfBirth = new DateTime(1970, 1, 1).AddYears(i - 1),
                     Savings = 50.00m + (1.01m * (i + 1)),
                     IsMale = (i%2 == 0),
+                    YorN = (i%2 == 0) ? 'Y' : 'N',
                     UniqueId = (i%2 != 0 ? Guid.NewGuid() : (Guid?)null),
                     TimeSpan = new TimeSpan(1,1,1),
                     HouseId = i%2==0?(int?)null:InMemoryHouses[i%5].HouseId,
-                    SupervisorId = (i+1)%2==0?(i+1):(int?)null
+                    SupervisorId = (i+1)%2==0?(i+1):(int?)null,
+                    TestEnum = (i+1)%2==0 ? TestEnum.All : TestEnum.None
                 };
                 Database.Insert(user);
                 InMemoryUsers.Add(user);
@@ -144,7 +146,11 @@ namespace NPoco.Tests.Common
     {
         public FluentMappingOverrides()
         {
-            For<User>().Columns(x => x.Column(y => y.IsMale).WithName("is_male"));
+            For<User>().Columns(x =>
+            {
+                x.Column(y => y.IsMale).WithName("is_male");
+                x.Column(y => y.TestEnum).WithDbType<string>();
+            });
             For<Supervisor>().UseMap<SupervisorMap>();
             For<Supervisor>().TableName("users").Columns(x => x.Column(y => y.IsMale).WithName("is_male"));
         }

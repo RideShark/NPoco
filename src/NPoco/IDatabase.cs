@@ -23,6 +23,12 @@ namespace NPoco
         object Insert<T>(string tableName, string primaryKeyName, bool autoIncrement, T poco);
         object Insert<T>(string tableName, string primaryKeyName, T poco);
         object Insert<T>(T poco);
+#if NET45
+        System.Threading.Tasks.Task<object> InsertAsync<T>(T poco);
+        System.Threading.Tasks.Task<int> UpdateAsync(object poco);
+        System.Threading.Tasks.Task<int> UpdateAsync(object poco, IEnumerable<string> columns);
+        System.Threading.Tasks.Task<int> DeleteAsync(object poco);
+#endif
         void InsertBulk<T>(IEnumerable<T> pocos);
         int Update(string tableName, string primaryKeyName, object poco, object primaryKeyValue);
         int Update(string tableName, string primaryKeyName, object poco);
@@ -43,8 +49,8 @@ namespace NPoco
         int Delete<T>(Sql sql);
         int Delete<T>(object pocoOrPrimaryKey);
         IDeleteQueryProvider<T> DeleteMany<T>();
-        void Save<T>(object poco);
-        bool IsNew<T>(object poco);
+        void Save<T>(T poco);
+        bool IsNew<T>(T poco);
     }
 
     public interface IDatabaseConfig

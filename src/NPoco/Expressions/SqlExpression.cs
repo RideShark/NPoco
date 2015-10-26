@@ -157,12 +157,12 @@ namespace NPoco.Expressions
 
             public virtual string ToSelectStatement()
             {
-                return ToSelectStatement(true);
+                return ToSelectStatement(true, false);
             }
 
-            public virtual string ToSelectStatement(bool applyPaging)
+            public virtual string ToSelectStatement(bool applyPaging, bool distinct)
             {
-                return _expression.ToSelectStatement(applyPaging);
+                return _expression.ToSelectStatement(applyPaging, distinct);
             }
         }
 
@@ -219,13 +219,9 @@ namespace NPoco.Expressions
             return proj;
         }
 
-        public virtual SqlExpression<T> SelectDistinct<TKey>(Expression<Func<T, TKey>> fields)
+        public virtual List<SelectMember> SelectDistinct<TKey>(Expression<Func<T, TKey>> fields)
         {
-            sep = string.Empty;
-            selectMembers.Clear();
-            var exp = PartialEvaluator.Eval(fields, CanBeEvaluatedLocally);
-            Visit(exp);
-            return this;
+            return SelectProjection(fields);
         }
 
         //public virtual SqlExpression<T> Where()
@@ -522,7 +518,7 @@ namespace NPoco.Expressions
             sep = string.Empty;
             generalMembers.Clear();
             Visit(fields);
-            Context.UpdateFields = new List<string>(generalMembers.Select(x => x.PocoColumn.ColumnName));
+            Context.UpdateFields = new List<string>(generalMembers.Select(x => x.PocoColumn.MemberInfo.Name));
             generalMembers.Clear();
             return this;
         }
@@ -620,11 +616,11 @@ namespace NPoco.Expressions
             return WhereExpression;
         }
 
-        protected virtual string ToSelectStatement(bool applyPaging)
+        protected virtual string ToSelectStatement(bool applyPaging, bool isDistinct)
         {
             var sql = new StringBuilder();
 
-            sql.Append(SelectExpression);
+            sql.Append(GetSelectExpression(isDistinct));
             sql.Append(string.IsNullOrEmpty(WhereExpression) ?
                        "" :
                        " \n" + WhereExpression);
@@ -646,23 +642,16 @@ namespace NPoco.Expressions
         //    return OrmLiteConfig.DialectProvider.ToCountStatement(modelDef.ModelType, WhereExpression, null);
         //}
 
-        private string SelectExpression
+        private string GetSelectExpression(bool distinct)
         {
-            get
-            {
-                var selectMembersFromOrderBys = orderByMembers
-                    .Select(x => new SelectMember() { PocoColumn = x.PocoColumn, EntityType = x.EntityType})
-                    .Where(x => !selectMembers.Any(y => y.EntityType == x.EntityType && y.PocoColumn.MemberInfo.Name == x.PocoColumn.MemberInfo.Name));
+            var selectMembersFromOrderBys = orderByMembers
+                .Select(x => new SelectMember() { PocoColumn = x.PocoColumn, EntityType = x.EntityType })
+                .Where(x => !selectMembers.Any(y => y.EntityType == x.EntityType && y.PocoColumn.MemberInfo.Name == x.PocoColumn.MemberInfo.Name));
 
-                var morecols = selectMembers.Concat(selectMembersFromOrderBys);
-                var cols = selectMembers.Count == 0 ? null : morecols.ToList();
-                BuildSelectExpression(cols, false);
-                return selectExpression;
-            }
-            set
-            {
-                selectExpression = value;
-            }
+            var morecols = selectMembers.Concat(selectMembersFromOrderBys);
+            var cols = selectMembers.Count == 0 ? null : morecols.ToList();
+            var selectsql = BuildSelectExpression(cols, distinct);
+            return selectsql;
         }
 
         private string WhereExpression
@@ -960,6 +949,18 @@ namespace NPoco.Expressions
                     else
                         left = CreateParam(left);
                 }
+                else if (left as MemberAccessString != null
+                    && right is int
+                    && new [] { typeof(char), typeof(char?) }.Contains(((MemberAccessString)left).PocoColumn.MemberInfo.GetMemberInfoType()))
+                {
+                    right = CreateParam(Convert.ToChar(right));
+                }
+                else if (left as MemberAccessString != null 
+                    && right is string
+                    && ((MemberAccessString) left).PocoColumn.ColumnType == typeof (AnsiString))
+                {
+                    right = CreateParam(new AnsiString((string)right));
+                }
                 else if (left as PartialSqlString == null && right as PartialSqlString == null)
                 {
                     var result = Expression.Lambda(b).Compile().DynamicInvoke();
@@ -1022,7 +1023,7 @@ namespace NPoco.Expressions
                 if (isNull)
                     return new NullableMemberAccess(pocoColumn, columnName, type);
 
-                if (IsEnum(propertyInfo))
+                if (Database.IsEnum(propertyInfo))
                     return new EnumMemberAccess(pocoColumn, columnName, type);
 
                 return new MemberAccessString(pocoColumn, columnName, type);
@@ -1032,12 +1033,6 @@ namespace NPoco.Expressions
             var lambda = Expression.Lambda<Func<object>>(memberExp);
             var getter = lambda.Compile();
             return getter();
-        }
-
-        private static bool IsEnum(PropertyInfo propertyInfo)
-        {
-            var underlyingType = Nullable.GetUnderlyingType(propertyInfo.PropertyType);
-            return propertyInfo.PropertyType.IsEnum || (underlyingType != null && underlyingType.IsEnum);
         }
 
         private Type GetCorrectType(MemberExpression m)
@@ -1074,8 +1069,7 @@ namespace NPoco.Expressions
                         selectMembers.Add(new SelectMember()
                         {
                             EntityType = ((MemberAccessString)exprs[i]).Type,
-                            PocoColumn = ((MemberAccessString)exprs[i]).PocoColumn,
-                            SelectSql = exprs[i].Text
+                            PocoColumn = ((MemberAccessString)exprs[i]).PocoColumn
                         });
                         continue;
                     }
@@ -1268,8 +1262,7 @@ namespace NPoco.Expressions
             {
                 case "Contains":
                     List<Object> args = this.VisitExpressionList(m.Arguments);
-                    object quotedColName = args[0];
-                    return new PartialSqlString(BuildInStatement(m.Object, quotedColName));
+                    return new PartialSqlString(BuildInStatement(m.Object, args[0]));
 
                 default:
                     throw new NotSupportedException();
@@ -1282,34 +1275,34 @@ namespace NPoco.Expressions
             {
                 case "Contains":
                     List<Object> args = this.VisitExpressionList(m.Arguments);
-                    object quotedColName = args[1];
-
                     Expression memberExpr = m.Arguments[0];
                     if (memberExpr.NodeType == ExpressionType.MemberAccess)
                         memberExpr = (m.Arguments[0] as MemberExpression);
 
-                    return new PartialSqlString(BuildInStatement(memberExpr, quotedColName));
+                    return new PartialSqlString(BuildInStatement(memberExpr, args[1]));
 
                 default:
                     throw new NotSupportedException();
             }
         }
 
-        private StringBuilder FlattenList(IEnumerable inArgs)
+        private StringBuilder FlattenList(IEnumerable inArgs, object partialSqlString)
         {
             StringBuilder sIn = new StringBuilder();
             foreach (Object e in inArgs)
             {
                 if (!typeof(ICollection).IsAssignableFrom(e.GetType()))
                 {
-                    sIn.AppendFormat("{0}{1}", sIn.Length > 0 ? "," : "", CreateParam(e));
+                    var v = FormatParameters(partialSqlString, e);
+                    sIn.AppendFormat("{0}{1}", sIn.Length > 0 ? "," : "", CreateParam(v));
                 }
                 else
                 {
                     var listArgs = e as ICollection;
                     foreach (Object el in listArgs)
                     {
-                        sIn.AppendFormat("{0}{1}", sIn.Length > 0 ? "," : "", CreateParam(el));
+                        var v = FormatParameters(partialSqlString, el);
+                        sIn.AppendFormat("{0}{1}", sIn.Length > 0 ? "," : "", CreateParam(v));
                     }
                 }
             }
@@ -1319,6 +1312,15 @@ namespace NPoco.Expressions
                 sIn.AppendFormat("select 1 /*poco_dual*/ where 1 = 0");
             }
             return sIn;
+        }
+
+        private static object FormatParameters(object partialSqlString, object e)
+        {
+            if (partialSqlString is EnumMemberAccess && ((EnumMemberAccess)partialSqlString).PocoColumn.ColumnType == typeof(string))
+            {
+                e = e.ToString();
+            }
+            return e;
         }
 
         protected virtual List<Object> VisitExpressionList(ReadOnlyCollection<Expression> original)
@@ -1447,10 +1449,10 @@ namespace NPoco.Expressions
             return CreateParam(false);
         }
 
-        private void BuildSelectExpression(List<SelectMember> fields, bool distinct)
+        private string BuildSelectExpression(List<SelectMember> fields, bool distinct)
         {
             var cols = fields ?? modelDef.QueryColumns.Select(x => new SelectMember{ PocoColumn = x.Value, EntityType = modelDef.type });
-            selectExpression = string.Format("SELECT {0}{1} \nFROM {2}",
+            return string.Format("SELECT {0}{1} \nFROM {2}",
                 (distinct ? "DISTINCT " : ""),
                     string.Join(", ", cols.Select(x =>
                     {
@@ -1503,7 +1505,7 @@ namespace NPoco.Expressions
 
             var inArgs = getter() as IEnumerable;
 
-            var sIn = FlattenList(inArgs);
+            var sIn = FlattenList(inArgs, quotedColName);
 
             statement = string.Format("{0} {1} ({2})", quotedColName, "IN", sIn);
             return statement;

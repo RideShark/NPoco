@@ -48,7 +48,7 @@ namespace NPoco
             Func<Delegate> createFactory = () =>
             {
                 // Create the method
-                var m = new DynamicMethod("poco_factory_" + _pocoFactories.Count, _pocoData.type, new Type[] { typeof(IDataReader), _pocoData.type }, true);
+                var m = new DynamicMethod("poco_factory_" + _pocoFactories.Count, typeof(object), new Type[] { typeof(IDataReader), typeof(object) }, true);
                 var il = m.GetILGenerator();
 
                 // RideShark:
@@ -148,11 +148,11 @@ namespace NPoco
                             il.Emit(OpCodes.Callvirt, fnInvoke);
 
                         il.MarkLabel(lblFin);
-                        il.Emit(OpCodes.Unbox_Any, _pocoData.type);								// value converted
+                        //il.Emit(OpCodes.Unbox_Any, _pocoData.type);								// value converted
                     }
                     else if (_pocoData.type == typeof(Dictionary<string, object>))
                     {
-                        Func<IDataReader, object, Dictionary<string, object>> func = (reader, inst) =>
+                        Func<IDataReader, object, object> func = (reader, inst) =>
                         {
                             var dict = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
                             for (int i = firstColumn; i < firstColumn + countColumns; i++)
@@ -165,7 +165,7 @@ namespace NPoco
                             return dict;
                         };
 
-                        var delegateType = typeof(Func<,,>).MakeGenericType(typeof(IDataReader), _pocoData.type, typeof(Dictionary<string, object>));
+                        var delegateType = typeof(Func<,,>).MakeGenericType(typeof(IDataReader), typeof(object), typeof(object));
                         var localDel = Delegate.CreateDelegate(delegateType, func.Target, func.Method);
                         return localDel;
                     }
@@ -205,6 +205,7 @@ namespace NPoco
                         if (instance != null)
                         {
                             il.Emit(OpCodes.Ldarg_1);
+                            il.Emit(OpCodes.Castclass, _pocoData.type);
                         }
                         else
                         {
@@ -399,7 +400,7 @@ namespace NPoco
                 il.Emit(OpCodes.Ret);
 
                 // Cache it, return it
-                var del = m.CreateDelegate(Expression.GetFuncType(typeof(IDataReader), _pocoData.type, _pocoData.type));
+                var del = m.CreateDelegate(Expression.GetFuncType(typeof(IDataReader), typeof(object), typeof(object)));
                 return del;
             };
 

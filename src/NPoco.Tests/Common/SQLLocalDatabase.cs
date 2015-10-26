@@ -93,9 +93,12 @@ namespace NPoco.Tests.Common
                     Is_Male tinyint,
                     UniqueId uniqueidentifier NULL,
                     TimeSpan time NULL,
-                    TestEnum varchar(10) NULL,
+                    TestEnum nvarchar(10) NULL,
                     HouseId int NULL,
                     SupervisorId int NULL,
+                    Version rowversion,
+                    VersionInt int default(0) NOT NULL,
+                    YorN char NULL
                 );
             ";
             cmd.ExecuteNonQuery();
@@ -130,6 +133,30 @@ namespace NPoco.Tests.Common
             ";
             cmd.ExecuteNonQuery();
 
+            CreateRideSharkTestData(cmd);
+            
+            cmd.CommandText = @"
+                CREATE TABLE GuidFromDb(
+                    Id uniqueidentifier PRIMARY KEY DEFAULT newid(), 
+                    Name nvarchar(30)  
+                );
+            ";
+            cmd.ExecuteNonQuery();
+
+            Console.WriteLine("Tables (CreateDB): " + Environment.NewLine);
+            var dt = conn.GetSchema("Tables");
+            foreach (DataRow row in dt.Rows)
+            {
+                Console.WriteLine(row[2]);
+            }
+
+            cmd.Dispose();
+            conn.Close();
+            conn.Dispose();
+        }
+
+        private void CreateRideSharkTestData(SqlCommand cmd)
+        {
             cmd.CommandText = @"
                 CREATE TABLE RideSharkTestData(
                     ID int IDENTITY(1,1) PRIMARY KEY NOT NULL, 
@@ -145,16 +172,6 @@ namespace NPoco.Tests.Common
             ";
             cmd.ExecuteNonQuery();
 
-            Console.WriteLine("Tables (CreateDB): " + Environment.NewLine);
-            var dt = conn.GetSchema("Tables");
-            foreach (DataRow row in dt.Rows)
-            {
-                Console.WriteLine(row[2]);
-            }
-
-            cmd.Dispose();
-            conn.Close();
-            conn.Dispose();
         }
 
         public override void CleanupDataBase()

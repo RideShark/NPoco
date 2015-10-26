@@ -4,6 +4,11 @@ namespace NPoco.Tests.Common
 {
     public class User
     {
+        public User()
+        {
+            DateOfBirth = new DateTime(1900, 1, 1);
+        }
+
         public int UserId { get; set; }
         public string Name { get; set; }
         public int Age { get; set; }
@@ -14,6 +19,8 @@ namespace NPoco.Tests.Common
         public TimeSpan TimeSpan { get; set; }
         public int? HouseId { get; set; }
         public int? SupervisorId { get; set; }
+        public char? YorN { get; set; }
+        public TestEnum TestEnum { get; set; }
 
         [ResultColumn]
         public House House { get; set; }
