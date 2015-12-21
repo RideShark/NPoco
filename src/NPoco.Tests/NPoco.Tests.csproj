@@ -69,6 +69,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Async\RideSharkAsyncTests.cs" />
     <Compile Include="Common\ColumnInfoTests.cs" />
     <Compile Include="Async\InsertAsyncTests.cs" />
     <Compile Include="Async\QueryAsyncTests.cs" />
@@ -86,6 +87,7 @@
     <Compile Include="Common\GuidFromDb.cs" />
     <Compile Include="Common\InMemoryDatabase.cs" />
     <Compile Include="Common\AdHocUser.cs" />
+    <Compile Include="Common\RideSharkRealDBTest.cs" />
     <Compile Include="Common\RideSharkTest.cs" />
     <Compile Include="Common\RideSharkTestData.cs" />
     <Compile Include="Common\SQLLocalDatabase.cs" />

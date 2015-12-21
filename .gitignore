@@ -6,4 +6,5 @@ obj
 *.user
 _ReSharper*
 src/TestResults
+src/NPoco.Tests/App.config
 packages
