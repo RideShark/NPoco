@@ -41,8 +41,26 @@ namespace NPoco.Tests.Async
         [Test]
         public async Task QueryMultipleRecords()
         {
+            int[] taksCounts = {1, 2, 3, 4, 5};
+            var tasks = taksCounts.Select(i => DoWork()).ToList();
+
+            var errors = 0;
+            while (tasks.Count > 0)
+            {
+                var nextTask = await Task.WhenAny(tasks);
+                tasks.Remove(nextTask);
+                var record = await nextTask;
+                errors += record;
+            }
+
+
+            Assert.AreEqual(0, errors);
+        }
+
+        public async Task<int> DoWork()
+        {
             List<Task<List<AAATranslationStrings>>> tasks = _testIds.Select(id => Database.FetchAsync<AAATranslationStrings>(
-                "Select TOP 1 * FROM AAATranslationStrings WHERE ID = @0", 
+                "Select TOP 1 * FROM AAATranslationStrings WHERE ID = @0",
                 id
                 )).ToList();
 
@@ -63,6 +81,10 @@ namespace NPoco.Tests.Async
                             incorrectIds--;
                         }
                     }
+                    else
+                    {
+                        incorrectIds--;
+                    }
                 }
 
             }
@@ -71,9 +93,7 @@ namespace NPoco.Tests.Async
                 caughtExceptions += 1;
             }
 
-            Assert.AreEqual(0, caughtExceptions);
-            Assert.AreEqual(0, incorrectIds);
+            return caughtExceptions + incorrectIds;
         }
-
     }
 }

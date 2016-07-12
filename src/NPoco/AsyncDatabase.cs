@@ -228,7 +228,7 @@ namespace NPoco
                     return Read<T>(typeof(T), instance, r);
                 }
             }
-            catch
+            catch(Exception x)
             {
                 CloseSharedConnectionInternal();
                 throw;
@@ -260,7 +260,7 @@ namespace NPoco
                     return Read<TRet>(types, cb, r);
                 }
             }
-            catch
+            catch(Exception x)
             {
                 CloseSharedConnectionInternal();
                 throw;
