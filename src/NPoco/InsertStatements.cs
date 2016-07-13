@@ -7,7 +7,7 @@ namespace NPoco
 {
     public partial class Database
     {
-        private class InsertStatements
+        public class InsertStatements
         {
             public class PreparedInsertSql
             {
